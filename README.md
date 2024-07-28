@@ -41,11 +41,17 @@
     * concurrent.futures
     * bidi
     * arabic_reshaper
+##  تثبيت المتطلبات (Installation)
 
+ يُنصح باستخدام مدير حزم مثل `pip` لتثبيت مكتبات Python. يمكنك تثبيت جميع المتطلبات باستخدام الأمر التالي:
+
+ ```bash
+ pip install geopandas pandas shapely lxml arabic_reshaper
+```
 ## طريقة الاستخدام (Usage)
 
 1.  تأكد من تثبيت Python 3.x والمكتبات المطلوبة.
-2.  قم بتشغيل البرنامج النصي `mo2U3.py`.
+2.  قم بتشغيل البرنامج النصي `mp2osm_3.1.py`.
 3.  حدد ملف .mp المدخل باستخدام زر "Browse".
 4.  حدد ملف .osm المخرج باستخدام زر "Browse".
 5.  (اختياري) حدد "Enable Dissolve" لدمج المضلعات المتداخلة.
@@ -107,11 +113,15 @@ This code is modified from "mp2osm_catmp.py" found in the OpenStreetMap SVN repo
     * concurrent.futures
     * bidi
     * arabic_reshaper
+ 
+ ```bash
+ pip install geopandas pandas shapely lxml arabic_reshaper
+ ```
 
 ## Usage:
 
 1.  Ensure Python 3.x and the required libraries are installed.
-2.  Run the script `mo2U3.py`.
+2.  Run the script `mp2osm_3.1.py`.
 3.  Select the input .mp file using the "Browse" button.
 4.  Select the output .osm file using the "Browse" button.
 5.  (Optional) Check "Enable Dissolve" to merge overlapping polygons.
