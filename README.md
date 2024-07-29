@@ -45,9 +45,6 @@
 
  يُنصح باستخدام مدير حزم مثل `pip` لتثبيت مكتبات Python. يمكنك تثبيت جميع المتطلبات باستخدام الأمر التالي:
 
- ```bash
- pip install geopandas pandas shapely lxml arabic_reshaper
-```
 ## طريقة الاستخدام (Usage)
 
 1.  تأكد من تثبيت Python 3.x والمكتبات المطلوبة.
@@ -113,10 +110,6 @@ This code is modified from "mp2osm_catmp.py" found in the OpenStreetMap SVN repo
     * concurrent.futures
     * bidi
     * arabic_reshaper
- 
- ```bash
- pip install geopandas pandas shapely lxml arabic_reshaper
- ```
 
 ## Usage:
 
