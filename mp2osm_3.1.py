@@ -3,6 +3,33 @@
 # modified by Karl Newman (User:SiliconFiend) to preserve routing topology and parse RouteParam 
 # modified by Abdullah Abdulrhman (User:abdullahO2) https://github.com/abdullahO2
 # license: GPL V2 or later
+try:
+    import geopandas as gpd
+    import pandas as pd
+    from shapely.geometry import Polygon, MultiPolygon, Point, LineString
+    from shapely.ops import unary_union
+    import xml.etree.ElementTree as ET
+    import os
+    from concurrent.futures import ThreadPoolExecutor
+    from bidi.algorithm import get_display
+    import arabic_reshaper
+except ImportError:
+    import pip
+    import sys
+
+    def install(package):
+        pip.main(['install', package])
+
+    install('geopandas')
+    install('pandas')
+    install('shapely')
+    install('lxml')
+    install('arabic_reshaper')
+    install('python-bidi')
+
+
+
+
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext
 from tkinter.ttk import Progressbar
