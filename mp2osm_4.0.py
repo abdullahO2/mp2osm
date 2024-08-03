@@ -2,6 +2,7 @@
 # modified by simon@mungewell.org
 # modified by Karl Newman (User:SiliconFiend) to preserve routing topology and parse RouteParam 
 # modified by Abdullah Abdulrhman (User:abdullahO2) https://github.com/abdullahO2
+# تم تعديله وبرمجته بواسطة أبو عبدالرحمن (اسم المستخدم:abdullahO2) https://github.com/abdullahO2
 # license: GPL V2 or later
 try:
     import geopandas as gpd
@@ -27,9 +28,7 @@ except ImportError:
     install('arabic_reshaper')
     install('python-bidi')
 
-
-
-
+import ast
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext
 from tkinter.ttk import Progressbar
@@ -43,467 +42,500 @@ from concurrent.futures import ThreadPoolExecutor
 from bidi.algorithm import get_display
 import arabic_reshaper
 
+def load_type_map(file_path):
+    poi_map = {}
+    polyline_map = {}
+    polygon_map = {}
+    current_section = None
+
+    with open(file_path, 'r', encoding='utf-8') as file:
+        for line in file:
+            line = line.strip()
+            if line.startswith('#') or not line:
+                continue
+
+            if line.startswith('['):
+                current_section = line[1:-1]
+            else:
+                if current_section:
+                    key, value = line.split(':', 1)
+                    key = ast.literal_eval(key) 
+                    value = dict(item.split('=') for item in value.split(','))
+                    if current_section == "POI_TAG_MAP":
+                        poi_map[key] = value
+                    elif current_section == "POLYLINE_TAG_MAP":
+                        polyline_map[key] = value
+                    elif current_section == "POLYGON_TAG_MAP":
+                        polygon_map[key] = value
+    
+    return poi_map, polyline_map, polygon_map
+
+def generate_default_type_map(file_path):
+    default_types = """
+# المولد الآلي للأنواع بواسطة أبو عبدالرحمن
 # تعريف الأنواع
 ## أنواع النقاط
-POI_TAG_MAP = {
-    # Cities المدن والقرى
-    (0x0,): {'place': 'locality'},
-    (0x0001,): {'place': 'city'},
-    (0x0002,): {'place': 'city'},
-    (0x0003,): {'place': 'city'},
-    (0x0004,): {'place': 'city'},
-    (0x0005,): {'place': 'city'},
-    (0x0006,): {'place': 'city'},
-    (0x0007,): {'place': 'city'},
-    (0x0008,): {'place': 'city'},
-    (0x0009,): {'place': 'town'},
-    (0x000a,): {'place': 'town'},
-    (0x000b,): {'place': 'village'},
-    (0x000c,): {'place': 'hamlet'},
-    (0x000d,): {'place': 'locality'},
-    (0x000e,): {'place': 'locality'},
-    (0x000f,): {'place': 'locality'},
-    (0x0010,): {'place': 'locality'},
-    (0x0100,): {'place': 'city'},
-    (0x0200,): {'place': 'city'},
-    (0x0300,): {'place': 'city'},
-    (0x0400,): {'place': 'city'},
-    (0x0500,): {'place': 'town'},
-    (0x0600,): {'place': 'town'},
-    (0x0700,): {'place': 'town'},
-    (0x0800,): {'place': 'town'},
-    (0x0900,): {'place': 'town'},
-    (0x0a00,): {'place': 'town'},
-    (0x0b00,): {'place': 'suburb'},
-    (0x0c00,): {'place': 'hamlet'},
-    (0x0d00,): {'place': 'hamlet'},
-    (0x0e00,): {'place': 'village'},
-    (0x0f00,): {'place': 'hamlet'},
-    (0x1000,): {'place': 'hamlet'},
-    (0x1100,): {'place': 'locality'},
-    (0x1200,): {'place': 'locality'},
-    (0x1400,): {'place': 'state'},
-    (0x1500,): {'place': 'locality'},
-    (0x1612,): {'highway': 'gate'},
-    (0x1616,): {'highway': 'gate'},
-    # Wrecks/Obstruction عوائق الطريق
-    (0x1c00,): {'highway': 'other'},
-    (0x1c01,): {'highway': 'wreck'},
-    (0x1c02,): {'highway': 'wreck'},
-    (0x1c03,): {'highway': 'wreck'},
-    (0x1c04,): {'highway': 'wreck'},
-    (0x1c05,): {'highway': 'obstruction'},
-    (0x1c06,): {'highway': 'obstruction'},
-    (0x1c07,): {'highway': 'obstruction'},
-    (0x1c08,): {'highway': 'obstruction'},
-    (0x1c09,): {'highway': 'obstruction'},
-    (0x1c0a,): {'highway': 'obstruction'},
-    (0x1c0b,): {'highway': 'obstruction'},
-    # المناطق والأماكن الغير مأهولة
-    (0x1e00,): {'place': 'region'},
-    (0x1f00,): {'place': 'country'},
-    (0x2800,): {'place': 'locality'},
-    (0x2804,): {'place': 'locality'},
-    (0x2900,): {'shop': 'mall'},
-    # Food/Drink المطاعم
-    (0x2a00,): {'amenity': 'restaurant'},
-    (0x2a01,): {'amenity': 'restaurant'},
-    (0x2a02,): {'amenity': 'restaurant'},
-    (0x2a03,): {'amenity': 'fast_food'},
-    (0x2a04,): {'amenity': 'fast_food'},
-    (0x2a05,): {'shop': 'bakery'},
-    (0x2a06,): {'amenity': 'fast_food'},
-    (0x2a07,): {'amenity': 'fast_food'},
-    (0x2a08,): {'amenity': 'fast_food'},
-    (0x2a09,): {'amenity': 'fast_food'},
-    (0x2a10,): {'amenity': 'fast_food'},
-    (0x2a12,): {'amenity': 'ice_cream'},
+[POI_TAG_MAP]
+# Cities المدن والقرى
+(0x0,):place=locality
+(0x0001,):place=city
+(0x0002,):place=city
+(0x0003,):place=city
+(0x0004,):place=city
+(0x0005,):place=city
+(0x0006,):place=city
+(0x0007,):place=city
+(0x0008,):place=city
+(0x0009,):place=town
+(0x000a,):place=town
+(0x000b,):place=village
+(0x000c,):place=hamlet
+(0x000d,):place=locality
+(0x000e,):place=locality
+(0x000f,):place=locality
+(0x0010,):place=locality
+(0x0100,):place=city
+(0x0200,):place=city
+(0x0300,):place=city
+(0x0400,):place=city
+(0x0500,):place=town
+(0x0600,):place=town
+(0x0700,):place=town
+(0x0800,):place=town
+(0x0900,):place=town
+(0x0a00,):place=town
+(0x0b00,):place=suburb
+(0x0c00,):place=hamlet
+(0x0d00,):place=hamlet
+(0x0e00,):place=village
+(0x0f00,):place=hamlet
+(0x1000,):place=hamlet
+(0x1100,):place=locality
+(0x1200,):place=locality
+(0x1400,):place=state
+(0x1500,):place=locality
+(0x1612,):highway=gate
+(0x1616,):highway=gate
+# Wrecks/Obstruction عوائق الطريق
+(0x1c00,):highway=other
+(0x1c01,):highway=wreck
+(0x1c02,):highway=wreck
+(0x1c03,):highway=wreck
+(0x1c04,):highway=wreck
+(0x1c05,):highway=obstruction
+(0x1c06,):highway=obstruction
+(0x1c07,):highway=obstruction
+(0x1c08,):highway=obstruction
+(0x1c09,):highway=obstruction
+(0x1c0a,):highway=obstruction
+(0x1c0b,):highway=obstruction
+# المناطق والأماكن الغير مأهولة
+(0x1e00,):place=region
+(0x1f00,):place=country
+(0x2800,):place=locality
+(0x2804,):place=locality
+(0x2900,):shop=mall
+# Food/Drink المطاعم
+(0x2a00,):amenity=restaurant
+(0x2a01,):amenity=restaurant
+(0x2a02,):amenity=restaurant
+(0x2a03,):amenity=fast_food
+(0x2a04,):amenity=fast_food
+(0x2a05,):shop=bakery
+(0x2a06,):amenity=fast_food
+(0x2a07,):amenity=fast_food
+(0x2a08,):amenity=fast_food
+(0x2a09,):amenity=fast_food
+(0x2a10,):amenity=fast_food
+(0x2a12,):amenity=ice_cream
 
-    (0x2a0a,): {'amenity': 'fast_food'},
-    (0x2a0b,): {'amenity': 'fast_food'},
-    (0x2a0c,): {'amenity': 'fast_food'},
-    (0x2a0d,): {'amenity': 'fast_food'},
-    (0x2a0e,): {'amenity': 'cafe'},
-    # Accomodation السكن
-    (0x2b00,): {'tourism': 'hotel'},
-    (0x2b01,): {'tourism': 'motel'},
-    (0x2b02,): {'tourism': 'guest_house'},
-    (0x2b03,): {'tourism': 'caravan_site'},
-    (0x2b04,): {'tourism': 'guest_house'},
-    # Attractions الأماكن الجذابة
-    (0x2c00,): {'tourism': 'attraction'},
-    (0x2c01,): {'tourism': 'theme_park'},
-    (0x2c02,): {'historic': 'ruins'},
-    (0x2c03,): {'amenity': 'library'},
-    (0x2c04,): {'tourism': 'viewpoint'},
-    (0x2c05,): {'amenity': 'school'},
-    (0x2c06,): {'leisure': 'park'},
-    (0x2c07,): {'amenity': 'zoo'},
-    (0x2c08,): {'leisure': 'sports_centre'},
-    (0x2c09,): {'amenity': 'public_building'},
-    (0x2c0b,): {'amenity': 'place_of_worship'},
-    (0x2c0c,): {'amenity': 'geiser'},
-    (0x2c0d,): {'amenity': 'place_of_worship'},
-    (0x2c0e,): {'amenity': 'place_of_worship'},
-    (0x2c0f,): {'amenity': 'place_of_worship'},
-    # الرياضة
-    (0x2d05,): {'leisure': 'golf_course'},
-    (0x2d02,): {'leisure': 'sports_centre'},
-    (0x2d08,): {'leisure': 'sports_centre'},
-    (0x2d09,): {'leisure': 'sports_centre'},
-    (0x2d0a,): {'leisure': 'sports_centre'},
-    (0x2d0b,): {'leisure': 'sports_centre'},
-    # Shops المتاجر
-    (0x2e00,): {'shop': 'convenience'},
-    (0x2e01,): {'shop': 'convenience'},
-    (0x2e02,): {'shop': 'supermarket'},
-    (0x2e03,): {'shop': 'supermarket'},
-    (0x2e04,): {'shop': 'supermarket'},
-    (0x2e05,): {'amenity': 'pharmacy'},
-    (0x2e06,): {'shop': 'convenience'},
-    (0x2e07,): {'shop': 'convenience'},
-    (0x2e08,): {'shop': 'convenience'},
-    (0x2e09,): {'shop': 'convenience'},
-    (0x2e0a,): {'shop': 'convenience'},
-    (0x2e0b,): {'shop': 'convenience'},
-    # Transport Services خدمات النقل
-    (0x2f00,): {'shop': 'dry_cleaning'},
-    (0x2f01,): {'amenity': 'fuel'},
-    (0x2f02,): {'amenity': 'car_rental'},
-    (0x2f03,): {'shop': 'car_repair'},
-    (0x2f04,): {'aeroway': 'aerodrome'},
-    (0x2f05,): {'amenity': 'post_office'},
-    (0x2f06,): {'amenity': 'bank'},
-    (0x2f07,): {'shop': 'car'},
-    (0x2f08,): {'amenity': 'bus_station'},
-    (0x2f09,): {'shop': 'marina_repair'},
-    (0x2f0b,): {'amenity': 'parking'},
-    (0x2f0c,): {'tourism': 'picnic_site'},
-    (0x2f0d,): {'place': 'locality'},
-    (0x2f0e,): {'amenity': 'car_wash'},
-    (0x2f0f,): {'shop': 'mall'},
-    (0x2f10,): {'services': 'other'},
-    (0x2f11,): {'amenity': 'business_services'},
-    (0x2f12,): {'man_made': 'tower', 'tower:type': 'communication'},
-    (0x2f13,): {'services': 'repair'},
-    (0x2f14,): {'services': 'social'},
-    (0x2F15,): {'services': 'social'},
-    (0x2f17,): {'highway': 'bus_stop'},
-    # Government خدمات حكومية
-    (0x3000,): {'amenity': 'townhall'},
-    (0x3001,): {'amenity': 'police'},
-    (0x3002,): {'amenity': 'hospital'},
-    (0x3003,): {'xxx': 'xxx'},
-    (0x3004,): {'amenity': 'courthouse'},
-    (0x3005,): {'office': 'charity'},
-    (0x3006,): {'barrier': 'border_control'},
-    (0x3007,): {'amenity': 'public_building'},
-    (0x3008,): {'amenity': 'fire_station'},
-    (0x3A03,): {'amenity': 'place_of_worship'},
-    (0x4100,): {'leisure': 'fishing'},
-    (0x4200,): {'historic': 'wreck'},
-    (0x4300,): {'amenity': 'ferry_terminal'},
-    (0x4301,): {'shop': 'mall'},
-    (0x4302,): {'xxx': 'xxx'},
-    (0x4400,): {'amenity': 'fuel'},
-    (0x4500,): {'amenity': 'restaurant'},
-    (0x4600,): {'amenity': 'pub'},
-    (0x4700,): {'leisure': 'slipway'},
-    (0x4800,): {'tourism': 'campsite'},
-    (0x4900,): {'leisure': 'park'},
-    # (0x4a00,): {'tourism': 'picnic_site'},
-    (0x4a00,): {'place': 'locality'},
-    (0x4b00,): {'amenity': 'hospital'},
-    (0x4c00,): {'tourism': 'information'},
-    (0x4d00,): {'amenity': 'parking'},
-    (0x4e00,): {'amenity': 'toilets'},
-    (0x4e01,): {'xxx': 'xxx'},
-    (0x4e02,): {'xxx': 'xxx'},
-    (0x4e03,): {'xxx': 'xxx'},
-    (0x4f00,): {'shop': 'beauty'},
-    (0x4f07,): {'traffic': 'no_transit_sign'},
-    (0x5000,): {'amenity': 'drinking_water'},
-    (0x5001,): {'amenity': 'hospital'},
-    (0x5002,): {'amenity': 'hospital'},
-    (0x5004,): {'office': 'diplomatic'},
-    (0x5100,): {'amenity': 'telephone'},
-    (0x5200,): {'tourism': 'viewpoint'},
-    (0x5400,): {'sport': 'swimming'},
-    (0x5500,): {'waterway': 'dam'},
-    (0x5700,): {'military': 'danger_area'},
-    (0x5800,): {'noexit': 'yes'},
-    (0x5900,): {'aeroway': 'aerodrome'},
-    (0x5901,): {'aeroway': 'aerodrome'},
-    (0x5902,): {'aeroway': 'aerodrome'},
-    (0x5903,): {'aeroway': 'aerodrome'},
-    (0x5904,): {'aeroway': 'helipad'},
-    (0x5905,): {'aeroway': 'aerodrome'},
-    (0x5a00,): {'distance_marker': 'yes'},
-    (0x5a02,): {'xxx': 'xxx'},
-    (0x5a04,): {'xxx': 'xxx'},
-    (0x5a08,): {'xxx': 'xxx'},
-    (0x5a09,): {'xxx': 'xxx'},
-    (0x5e00,): {'place': 'locality'},
-    (0x6100,): {'building': 'yes '},
-    (0x6200,): {'peak': 'yes'},
-    (0x6300,): {'man_made': 'survey_point'},
-    # Man Made منشآت
-    (0x6400,): {'highway': 'gate'},
-    # (0x6400,): {'historic': 'ruins'},
-    (0x6401,): {'bridge': 'yes'},
-    (0x6402,): {'building': 'yes'},
-    (0x6403,): {'landuse': 'cemetery'},
-    (0x6404,): {'amenity': 'place_of_worship'},
-    (0x6405,): {'amenity': 'public_building'},
-    (0x6406,): {'highway': 'crossing'},
-    (0x6407,): {'waterway': 'dam'},
-    (0x6408,): {'amenity': 'hospital'},
-    (0x6409,): {'waterway': 'dam'},
-    (0x640a,): {'place': 'locality'},
-    (0x640b,): {'military': 'barraks'},
-    (0x640c,): {'man_made': 'mineshaft'},
-    (0x640d,): {'man_made': 'pumping_rig'},
-    (0x640e,): {'leisure': 'park'},
-    (0x640f,): {'amenity': 'post_office'},
-    (0x6410,): {'amenity': 'school'},
-    (0x6411,): {'man_made': 'tower'},
-    (0x6412,): {'highway': 'trailhead'},
-    (0x6413,): {'tunnel': 'yes'},
-    (0x6414,): {'man_made': 'water_well'},
-    (0x6415,): {'place': 'locality'},
-    (0x6416,): {'place': 'locality'},
-    # HydroGraphics أماكن مائية
-    (0x6500,): {'place': 'locality'},
-    (0x6501,): {'waterway': 'stream'},
-    (0x6502,): {'natural': 'dune'},
-    (0x6503,): {'natural': 'water'},
-    (0x6504,): {'natural': 'water'},
-    (0x6505,): {'waterway': 'canal'},
-    (0x6506,): {'waterway': 'canal'},
-    (0x6507,): {'natural': 'water'},
-    (0x6508,): {'waterway': 'waterfall'},
-    (0x6509,): {'natural': 'gayser'},
-    (0x650a,): {'natural': 'glacier'},
-    (0x650b,): {'natural': 'water'},
-    (0x650c,): {'natural': 'island'},
-    (0x650d,): {'natural': 'water'},
-    (0x650e,): {'waterway': 'rapid'},
-    (0x650f,): {'landuse': 'reservoir'},
-    (0x6511,): {'natural': 'spring'},
-    (0x6512,): {'waterway': 'stream'},
-    (0x6513,): {'waterway': 'wetland'},
-    # Land features أماكن طبيعية
-    (0x6600,): {'place': 'locality'},
-    (0x6601,): {'natural': 'cave_entrance'},
-    (0x6602,): {'place': 'locality'},
-    (0x6603,): {'natural': 'basin'},
-    (0x6604,): {'natural': 'dune'},
-    (0x6605,): {'natural': 'bench'},
-    (0x6606,): {'natural': 'cape'},
-    (0x6607,): {'natural': 'cave_entrance'},
-    (0x6608,): {'natural': 'sinkhole'},
-    (0x6609,): {'natural': 'wetland'},
-    (0x660a,): {'natural': 'wood'},
-    (0x660b,): {'natural': 'gap'},
-    (0x660c,): {'natural': 'gut'},
-    (0x660d,): {'natural': 'isthmus'},
-    (0x660e,): {'natural': 'lava'},
-    (0x660f,): {'man_made': 'cairn'},
-    (0x6610,): {'natural': 'scrub'},
-    (0x6611,): {'natural': 'range'},
-    (0x6612,): {'natural': 'reserve'},
-    (0x6613,): {'natural': 'ridge'},
-    (0x6614,): {'natural': 'peak'},
-    (0x6615,): {'natural': 'slope'},
-    (0x6616,): {'natural': 'peak'},
-    (0x6617,): {'natural': 'valley'},
-    (0x6618,): {'natural': 'wood'},
-    (0x680a,): {'amenity': 'fuel'},
-    #باصات وأماكن أخرى
-    (0xf001,): {'amenity': 'bus_station'},
-    (0xf001,): {'highway': 'bus_stop'},
-    (0xf002,): {'highway': 'bus_stop'},
-    (0xf003,): {'highway': 'bus_stop'},
-    (0xf004,): {'highway': 'bus_stop'},
-    (0xf006,): {'railway': 'halt'},
-    (0xf007,): {'railway': 'station'},
-    (0xf104,): {'amenity': 'place_of_worship'},
-    (0xf201,): {'highway': 'traffic_signals'},
-    (0xf306,): {'railway': 'level_crossing'},
-    (0xf504,): {'amenity': 'university'}
-}
+(0x2a0a,):amenity=fast_food
+(0x2a0b,):amenity=fast_food
+(0x2a0c,):amenity=fast_food
+(0x2a0d,):amenity=fast_food
+(0x2a0e,):amenity=cafe
+# Accomodation السكن
+(0x2b00,):tourism=hotel
+(0x2b01,):tourism=motel
+(0x2b02,):tourism=guest_house
+(0x2b03,):tourism=caravan_site
+(0x2b04,):tourism=guest_house
+# Attractions الأماكن الجذابة
+(0x2c00,):tourism=attraction
+(0x2c01,):tourism=theme_park
+(0x2c02,):historic=ruins
+(0x2c03,):amenity=library
+(0x2c04,):tourism=viewpoint
+(0x2c05,):amenity=school
+(0x2c06,):leisure=park
+(0x2c07,):amenity=zoo
+(0x2c08,):leisure=sports_centre
+(0x2c09,):amenity=public_building
+(0x2c0b,):amenity=place_of_worship
+(0x2c0c,):amenity=geiser
+(0x2c0d,):amenity=place_of_worship
+(0x2c0e,):amenity=place_of_worship
+(0x2c0f,):amenity=place_of_worship
+# الرياضة
+(0x2d05,):leisure=golf_course
+(0x2d02,):leisure=sports_centre
+(0x2d08,):leisure=sports_centre
+(0x2d09,):leisure=sports_centre
+(0x2d0a,):leisure=sports_centre
+(0x2d0b,):leisure=sports_centre
+# Shops المتاجر
+(0x2e00,):shop=convenience
+(0x2e01,):shop=convenience
+(0x2e02,):shop=supermarket
+(0x2e03,):shop=supermarket
+(0x2e04,):shop=supermarket
+(0x2e05,):amenity=pharmacy
+(0x2e06,):shop=convenience
+(0x2e07,):shop=convenience
+(0x2e08,):shop=convenience
+(0x2e09,):shop=convenience
+(0x2e0a,):shop=convenience
+(0x2e0b,):shop=convenience
+# Transport Services خدمات النقل
+(0x2f00,):shop=dry_cleaning
+(0x2f01,):amenity=fuel
+(0x2f02,):amenity=car_rental
+(0x2f03,):shop=car_repair
+(0x2f04,):aeroway=aerodrome
+(0x2f05,):amenity=post_office
+(0x2f06,):amenity=bank
+(0x2f07,):shop=car
+(0x2f08,):amenity=bus_station
+(0x2f09,):shop=marina_repair
+(0x2f0b,):amenity=parking
+(0x2f0c,):tourism=picnic_site
+(0x2f0d,):place=locality
+(0x2f0e,):amenity=car_wash
+(0x2f0f,):shop=mall
+(0x2f10,):services=other
+(0x2f11,):amenity=business_services
+(0x2f12,):man_made=tower , tower:type=communication
+(0x2f13,):services=repair
+(0x2f14,):services=social
+(0x2F15,):services=social
+(0x2f17,):highway=bus_stop
+# Government خدمات حكومية
+(0x3000,):amenity=townhall
+(0x3001,):amenity=police
+(0x3002,):amenity=hospital
+(0x3003,):xxx=xxx
+(0x3004,):amenity=courthouse
+(0x3005,):office=charity
+(0x3006,):barrier=border_control
+(0x3007,):amenity=public_building
+(0x3008,):amenity=fire_station
+(0x3A03,):amenity=place_of_worship
+(0x4100,):leisure=fishing
+(0x4200,):historic=wreck
+(0x4300,):amenity=ferry_terminal
+(0x4301,):shop=mall
+(0x4302,):xxx=xxx
+(0x4400,):amenity=fuel
+(0x4500,):amenity=restaurant
+(0x4600,):amenity=pub
+(0x4700,):leisure=slipway
+(0x4800,):tourism=campsite
+(0x4900,):leisure=park
+(0x4a00,):place=locality
+(0x4b00,):amenity=hospital
+(0x4c00,):tourism=information
+(0x4d00,):amenity=parking
+(0x4e00,):amenity=toilets
+(0x4e01,):xxx=xxx
+(0x4e02,):xxx=xxx
+(0x4e03,):xxx=xxx
+(0x4f00,):shop=beauty
+(0x4f07,):traffic=no_transit_sign
+(0x5000,):amenity=drinking_water
+(0x5001,):amenity=hospital
+(0x5002,):amenity=hospital
+(0x5004,):office=diplomatic
+(0x5100,):amenity=telephone
+(0x5200,):tourism=viewpoint
+(0x5400,):sport=swimming
+(0x5500,):waterway=dam
+(0x5700,):military=danger_area
+(0x5800,):noexit=yes
+(0x5900,):aeroway=aerodrome
+(0x5901,):aeroway=aerodrome
+(0x5902,):aeroway=aerodrome
+(0x5903,):aeroway=aerodrome
+(0x5904,):aeroway=helipad
+(0x5905,):aeroway=aerodrome
+(0x5a00,):distance_marker=yes
+(0x5a02,):xxx=xxx
+(0x5a04,):xxx=xxx
+(0x5a08,):xxx=xxx
+(0x5a09,):xxx=xxx
+(0x5e00,):place=locality
+(0x6100,):building=yes 
+(0x6200,):peak=yes
+(0x6300,):man_made=survey_point
+# Man Made منشآت
+(0x6400,):highway=gate
+# (0x6400,):historic=ruins
+(0x6401,):bridge=yes
+(0x6402,):building=yes
+(0x6403,):landuse=cemetery
+(0x6404,):amenity=place_of_worship
+(0x6405,):amenity=public_building
+(0x6406,):highway=crossing
+(0x6407,):waterway=dam
+(0x6408,):amenity=hospital
+(0x6409,):waterway=dam
+(0x640a,):place=locality
+(0x640b,):military=barraks
+(0x640c,):man_made=mineshaft
+(0x640d,):man_made=pumping_rig
+(0x640e,):leisure=park
+(0x640f,):amenity=post_office
+(0x6410,):amenity=school
+(0x6411,):man_made=tower
+(0x6412,):highway=trailhead
+(0x6413,):tunnel=yes
+(0x6414,):man_made=water_well
+(0x6415,):place=locality
+(0x6416,):place=locality
+# HydroGraphics أماكن مائية
+(0x6500,):place=locality
+(0x6501,):waterway=stream
+(0x6502,):natural=dune
+(0x6503,):natural=water
+(0x6504,):natural=water
+(0x6505,):waterway=canal
+(0x6506,):waterway=canal
+(0x6507,):natural=water
+(0x6508,):waterway=waterfall
+(0x6509,):natural=gayser
+(0x650a,):natural=glacier
+(0x650b,):natural=water
+(0x650c,):natural=island
+(0x650d,):natural=water
+(0x650e,):waterway=rapid
+(0x650f,):landuse=reservoir
+(0x6511,):natural=spring
+(0x6512,):waterway=stream
+(0x6513,):waterway=wetland
+# Land features أماكن طبيعية
+(0x6600,):place=locality
+(0x6601,):natural=cave_entrance
+(0x6602,):place=locality
+(0x6603,):natural=basin
+(0x6604,):natural=dune
+(0x6605,):natural=bench
+(0x6606,):natural=cape
+(0x6607,):natural=cave_entrance
+(0x6608,):natural=sinkhole
+(0x6609,):natural=wetland
+(0x660a,):natural=wood
+(0x660b,):natural=gap
+(0x660c,):natural=gut
+(0x660d,):natural=isthmus
+(0x660e,):natural=lava
+(0x660f,):man_made=cairn
+(0x6610,):natural=scrub
+(0x6611,):natural=range
+(0x6612,):natural=reserve
+(0x6613,):natural=ridge
+(0x6614,):natural=peak
+(0x6615,):natural=slope
+(0x6616,):natural=peak
+(0x6617,):natural=valley
+(0x6618,):natural=wood
+(0x680a,):amenity=fuel
+#باصات وأماكن أخرى
+(0xf001,):amenity=bus_station
+(0xf001,):highway=bus_stop
+(0xf002,):highway=bus_stop
+(0xf003,):highway=bus_stop
+(0xf004,):highway=bus_stop
+(0xf006,):railway=halt
+(0xf007,):railway=station
+(0xf104,):amenity=place_of_worship
+(0xf201,):highway=traffic_signals
+(0xf306,):railway=level_crossing
+(0xf504,):amenity=university
+
+
+[POLYLINE_TAG_MAP]
 ## الخطوط والطرق
 # POLYLINES
-POLYLINE_TAG_MAP = {
-    # طرق غير مصنفة
-    (0x0000,): {'highway': 'road'},
-    # major highway طرق رئيسية
-    (0x0001,): {'highway': 'motorway'},
-    # principal طرق أولية
-    (0x0002,): {'highway': 'primary'},
-    # Other hw طرق ثانوية
-    (0x0003,): {'highway': 'secondary'},
-    (0x0004,): {'highway': 'secondary'},
-    # collector road طرق ثالثية
-    (0x0005,): {'highway': 'tertiary'},
-    # residantial طرق سكنية
-    (0x0006,): {'highway': 'residential'},
-    # alley/private ممرات وطرق سكنية
-    (0x0007,): {'highway': 'residential'},
-    # hw ramp low speed وصلات طرق
-    (0x0008,): {'highway': 'primary_link'},
-    (0x0009,): {'highway': 'trunk_link'},
-    # unpaved طرق غير معبدة
-    (0x000a,): {'highway': 'track'},
-    # major hw connector وصلات طرق ثانوية
-    (0x000b,): {'highway': 'secondary'},
-    # roundabout دوارات
-    (0x000c,): {'junction': 'roundabout'},
-    # طرق غير مصنفة
-    (0x000d,): {'highway': 'road'},
-    (0x000e,): {'highway': 'road'},
-    (0x000f,): {'highway': 'road'},
-    (0x0010,): {'highway': 'road'},
-    (0x0011,): {'railway': 'platform'},
-    (0x0012,): {'highway': 'service'},
-    (0x0013,): {'highway': 'steps'},
-    # RAILROAD طرق قطارات
-    (0x0014,): {'railway': 'rail'},
-    # coastline خط الساحل
-    (0x0015,): {'natural': 'coastline'},
+# طرق غير مصنفة
 
-    # walkway طرق مشي
-    (0x0016,): {'highway': 'footway'},
-    (0x0017,): {'barrier': 'fence'},
-    (0x0018,): {'waterway': 'river'},
-    (0x001a,): {'route': 'ferry'},
-    (0x001b,): {'route': 'ferry'},
+(0x0000,):highway=road
+# major highway طرق رئيسية
+(0x0001,):highway=motorway
+# principal طرق أولية
+(0x0002,):highway=primary
+# Other hw طرق ثانوية
+(0x0003,):highway=secondary
+(0x0004,):highway=secondary
+# collector road طرق ثالثية
+(0x0005,):highway=tertiary
+# residantial طرق سكنية
+(0x0006,):highway=residential
+# alley/private ممرات وطرق سكنية
+(0x0007,):highway=residential
+# hw ramp low speed وصلات طرق
+(0x0008,):highway=primary_link
+(0x0009,):highway=trunk_link
+# unpaved طرق غير معبدة
+(0x000a,):highway=track
+# major hw connector وصلات طرق ثانوية
+(0x000b,):highway=secondary
+# roundabout دوارات
+(0x000c,):junction=roundabout
+# طرق غير مصنفة
+(0x000d,):highway=road
+(0x000e,):highway=road
+(0x000f,):highway=road
+(0x0010,):highway=road
+(0x0011,):railway=platform
+(0x0012,):highway=service
+(0x0013,):highway=steps
+# RAILROAD طرق قطارات
+(0x0014,):railway=rail
+# coastline خط الساحل
+(0x0015,):natural=coastline
 
-    # boundary state/province حدود وحواجز
-    (0x001c,): {'barrier': 'fence'},
-    # county حدود إدارية
-    (0x001d,): {'boundary': 'administrative'},
-    # international boundary حدود دولية
-    (0x001e,): {'boundary': 'administrative'},
-    # خطوط أخرى مثل الوديان والجيلان وغيرها
-    (0x001f,): {'waterway': 'river'},
-    (0x0021,): {'natural': 'cliff'},
-    (0x0026,): {'waterway': 'stream'},
-    (0x0027,): {'aeroway': 'runway'},
-    (0x0028,): {'man_made': 'pipeline'},
-    (0x0029,): {'power': 'line'},
-    (0x0030,): {'sport': 'running', 'leisure': 'track'},
-    (0x003f,): {'railway': 'subway'},
-    (0x0042,): {'highway': 'unsurfaced'},
-    (0x0044,): {'waterway': 'drain'},
-    (0x0045,): {'boundary': 'administrative'},
-    (0x0046,): {'barrier': 'fence'},
-    (0x0048,): {'highway': 'pedestrian'},
-    (0x0049,): {'highway': 'living_street'}
-}
+# walkway طرق مشي
+(0x0016,):highway=footway
+(0x0017,):barrier=fence
+(0x0018,):waterway=river
+(0x001a,):route=ferry
+(0x001b,):route=ferry
+
+# boundary state/province حدود وحواجز
+(0x001c,):barrier=fence
+# county حدود إدارية
+(0x001d,):boundary=administrative
+# international boundary حدود دولية
+(0x001e,):boundary=administrative
+# خطوط أخرى مثل الوديان والجيلان وغيرها
+(0x001f,):waterway=river
+(0x0021,):natural=cliff
+(0x0026,):waterway=stream
+(0x0027,):aeroway=runway
+(0x0028,):man_made=pipeline
+(0x0029,):power=line
+(0x0030,):sport=running , leisure=track
+(0x003f,):railway=subway
+(0x0042,):highway=unsurfaced
+(0x0044,):waterway=drain
+(0x0045,):boundary=administrative
+(0x0046,):barrier=fence
+(0x0048,):highway=pedestrian
+(0x0049,):highway=living_street
+
+[POLYGON_TAG_MAP]
 ## المضلعات والمساحات
 # POLYGONES
-POLYGON_TAG_MAP = {
-    (0x0,): {'xxx': 'xxx'},
-    (0x0001,): {'landuse': 'residential'},
-    (0x0002,): {'landuse': 'residential'},
-    (0x0003,): {'landuse': 'millitary'},
-    (0x0004,): {'landuse': 'millitary'},
-    (0x0005,): {'amenity': 'parking'},
-    (0x0006,): {'amenity': 'parking'},
-    (0x0007,): {'landuse': 'nature_reserve'},
-    (0x0008,): {'landuse': 'retail'},
-    (0x0009,): {'building': 'yes'},
-    (0x000a,): {'natural': 'wetland'},
-    (0x000b,): {'building': 'hospital'},
-    (0x000c,): {'landuse': 'industrial'},
-    (0x000d,): {'natural': 'wood'},
-    (0x000e,): {'aeroway': 'helipad'},
-    (0x000f,): {'landuse': 'commercial'},
-    (0x0010,): {'building': 'yes'},
-    (0x0012,): {'landuse': 'quarry'},
-    (0x0013,): {'building': 'yes'},
-    (0x0014,): {'natural': 'scrub'},
-    (0x0015,): {'natural': 'scrub'},
-    (0x0016,): {'boundary': 'national_park'},
-    (0x0017,): {'leisure': 'park'},
-    (0x0018,): {'leisure': 'pitch'},
-    (0x0019,): {'leisure': 'pitch'},
-    (0x001a,): {'landuse': 'cemetery'},
-    (0x001c,): {'landuse': 'grass'},
-    (0x001e,): {'natural': 'wood'},
-    (0x001f,): {'natural': 'wood'},
-    (0x0020,): {'natural': 'wood'},
-    (0x0021,): {'natural': 'wood'},
-    (0x0022,): {'landuse': 'commercial'},
-    (0x0023,): {'amenity': 'public_building'},
-    (0x0024,): {'man_made': 'breakwater'},
-    (0x0025,): {'man_made': 'pier'},
-    (0x0028,): {'natural': 'water'},
-    (0x0029,): {'natural': 'wetland'},
-    (0x002c,): {'landuse': 'grass'},
-    (0x002e,): {'landuse': 'beach'},
-    (0x002f,): {'xxx': 'xxx'},
-    (0x0032,): {'natural': 'water'},
-    (0x003a,): {'aeroway': 'apron'},
-    (0x003b,): {'natural': 'water'},
-    (0x003c,): {'natural': 'water'},
-    (0x003d,): {'natural': 'water'},
-    (0x003f,): {'natural': 'water'},
-    (0x0040,): {'natural': 'water'},
-    (0x0041,): {'natural': 'wetland'},
-    (0x0042,): {'natural': 'water'},
-    (0x0043,): {'natural': 'water'},
-    (0x0044,): {'natural': 'water'},
-    (0x0045,): {'natural': 'water'},
-    (0x0046,): {'natural': 'wetland'},
-    (0x0047,): {'natural': 'water'},
-    (0x0048,): {'natural': 'water'},
-    (0x0049,): {'natural': 'water'},
-    (0x004b,): {'xxx': 'xxx'},
-    (0x004c,): {'natural': 'wetland'},
-    (0x004e,): {'landuse': 'farmland'},
-    (0x004f,): {'natural': 'scrub'},
-    (0x0050,): {'leisure': 'nature_reserve'},
-    (0x0051,): {'natural': 'marsh'},
-    (0x0052,): {'landuse': 'forest'},
-    (0x0053,): {'natural': 'wetland'},
-    (0x005c,): {'natural': 'sand'},
-    (0x005d,): {'landuse': 'orchard'},
-    (0x005f,): {'amenity': 'place_of_worship', 'building': 'yes'},
-    (0x006a,): {'building': 'train_station'},
-    (0x006c,): {'building': 'yes'},
-    (0x006d,): {'natural': 'wetland'},
-    (0x006e,): {'amenity': 'public_building'},
-    (0x006f,): {'amenity': 'public_building'},
-    (0x0070,): {'shop': 'mall'},
-    (0x0073,): {'natural': 'sand'},
-    (0x007b,): {'leisure': 'nature_reserve'},
-    (0x007e,): {'amenity': 'public_building'},
-    (0x0081,): {'landuse': 'forest'},
-    (0x0082,): {'landuse': 'forest'},
-    (0x0083,): {'landuse': 'forest'},
-    (0x0084,): {'landuse': 'forest'},
-    (0x0085,): {'landuse': 'forest'},
-    (0x0086,): {'leisure': 'garden'},
-    (0x0087,): {'leisure': 'garden'},
-    (0x0088,): {'leisure': 'garden'},
-    (0x0089,): {'natural': 'sand'},
-    (0x008a,): {'natural': 'bare_rock'},
-    (0x008b,): {'natural': 'marsh'},
-    (0x008f,): {'landuse': 'forest'},
-    (0x0090,): {'landuse': 'forest'},
-    (0x0091,): {'landuse': 'forest'},
-    (0x0096,): {'natural': 'marsh'},
-    (0x0098,): {'landuse': 'farmland'},
-    (0x2d0a,): {'leisure': 'sports_centre'},
-    (0x3002,): {'amenity': 'hospital'},
-    (0x6402,): {'building': 'yes'},
-    (0x6408,): {'building': 'clinic'}
-}
+(0x0,):xxx=xxx
+(0x0001,):landuse=residential
+(0x0002,):landuse=residential
+(0x0003,):landuse=millitary
+(0x0004,):landuse=millitary
+(0x0005,):amenity=parking
+(0x0006,):amenity=parking
+(0x0007,):landuse=nature_reserve
+(0x0008,):landuse=retail
+(0x0009,):building=yes
+(0x000a,):natural=wetland
+(0x000b,):building=hospital
+(0x000c,):landuse=industrial
+(0x000d,):natural=wood
+(0x000e,):aeroway=helipad
+(0x000f,):landuse=commercial
+(0x0010,):building=yes
+(0x0012,):landuse=quarry
+(0x0013,):building=yes
+(0x0014,):natural=scrub
+(0x0015,):natural=scrub
+(0x0016,):boundary=national_park
+(0x0017,):leisure=park
+(0x0018,):leisure=pitch
+(0x0019,):leisure=pitch
+(0x001a,):landuse=cemetery
+(0x001c,):landuse=grass
+(0x001e,):natural=wood
+(0x001f,):natural=wood
+(0x0020,):natural=wood
+(0x0021,):natural=wood
+(0x0022,):landuse=commercial
+(0x0023,):amenity=public_building
+(0x0024,):man_made=breakwater
+(0x0025,):man_made=pier
+(0x0028,):natural=water
+(0x0029,):natural=wetland
+(0x002c,):landuse=grass
+(0x002e,):landuse=beach
+(0x002f,):xxx=xxx
+(0x0032,):natural=water
+(0x003a,):aeroway=apron
+(0x003b,):natural=water
+(0x003c,):natural=water
+(0x003d,):natural=water
+(0x003f,):natural=water
+(0x0040,):natural=water
+(0x0041,):natural=wetland
+(0x0042,):natural=water
+(0x0043,):natural=water
+(0x0044,):natural=water
+(0x0045,):natural=water
+(0x0046,):natural=wetland
+(0x0047,):natural=water
+(0x0048,):natural=water
+(0x0049,):natural=water
+(0x004b,):xxx=xxx
+(0x004c,):natural=wetland
+(0x004e,):landuse=farmland
+(0x004f,):natural=scrub
+(0x0050,):leisure=nature_reserve
+(0x0051,):natural=marsh
+(0x0052,):landuse=forest
+(0x0053,):natural=wetland
+(0x005c,):natural=sand
+(0x005d,):landuse=orchard
+(0x005f,):amenity=place_of_worship , building=yes
+(0x006a,):building=train_station
+(0x006c,):building=yes
+(0x006d,):natural=wetland
+(0x006e,):amenity=public_building
+(0x006f,):amenity=public_building
+(0x0070,):shop=mall
+(0x0073,):natural=sand
+(0x007b,):leisure=nature_reserve
+(0x007e,):amenity=public_building
+(0x0081,):landuse=forest
+(0x0082,):landuse=forest
+(0x0083,):landuse=forest
+(0x0084,):landuse=forest
+(0x0085,):landuse=forest
+(0x0086,):leisure=garden
+(0x0087,):leisure=garden
+(0x0088,):leisure=garden
+(0x0089,):natural=sand
+(0x008a,):natural=bare_rock
+(0x008b,):natural=marsh
+(0x008f,):landuse=forest
+(0x0090,):landuse=forest
+(0x0091,):landuse=forest
+(0x0096,):natural=marsh
+(0x0098,):landuse=farmland
+(0x2d0a,):leisure=sports_centre
+(0x3002,):amenity=hospital
+(0x6402,):building=yes
+(0x6408,):building=clinic
 
+    """
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.write(default_types)
 
-# (دالة تنظيف التسميات)
 def clean_label(label):
     codestart = label.find('~[')
     if codestart != -1:
@@ -694,7 +726,8 @@ def add_tags_and_label(element, typecode, label, elementtagmap):
         element.append(name_tag)
 created_nodes = {}
 def process_node(line_iterator, nodeid, elementtagmap):
-    node = ET.Element('node', visible='true', id=str(nodeid))
+    node = ET.Element('node', id=str(nodeid), version='1')
+    has_data0 = False
     for line in line_iterator:
         if line.startswith('[END]'):
             break
@@ -714,82 +747,29 @@ def process_node(line_iterator, nodeid, elementtagmap):
                         tag.tail = '\n    '
                         node.append(tag)
 
-        if line.startswith('Data0'):  # تعيين Data0 فقط
+        if line.startswith('Data0'):
+            has_data0 = True
             coords = line.split('=')[1].strip().split(',')
             point = Point(float(coords[1][:-1]), float(coords[0][1:]))
             node.set('lat', str(point.y))
             node.set('lon', str(point.x))
 
-    node.text = '\n    '
-    node.tail = '\n  '
-    return node
+    if has_data0:
+        node.text = '\n    '
+        node.tail = '\n  '
+        return node
+    else:
+        return None
+
 def process_polyline(line_iterator, nodeid, elementtagmap):
     global created_nodes
-    rnodes = {}
     label = None
     typecode = None
+
     way_node = None
+    current_point = None
 
-    for line_number, line in enumerate(line_iterator, start=1):
-        if line.startswith('[END]'):
-            break
-
-        if line.startswith('Label'):
-            label = clean_label(line.split('=')[1])
-
-        if line.startswith('Type'):
-            typecode = int(line.split('=')[1].strip(), 16)
-
-        if line.startswith('Data0'):  # تعيين Data0 فقط
-            coords = line.split('=')[1].strip().split(',')
-            line_points = []
-
-            for i in range(0, len(coords), 2):
-                try:
-                    lat = float(coords[i][1:])
-                    lon = float(coords[i + 1][:-1])
-                    line_points.append((lon, lat))
-                except (IndexError, ValueError) as e:
-                    log_message("error_converting_coords", line_number, coords[i], coords[i + 1] if i + 1 < len(coords) else "Missing")
-                    continue
-
-            if line_points:
-                line_geom = LineString(line_points)
-                way_node = ET.Element('way', visible='true', id=str(nodeid))
-                nodeid -= 1
-
-                for point in line_geom.coords:
-                    point_tuple = (point[0], point[1])
-
-                    if point_tuple in created_nodes:
-                        curId = created_nodes[point_tuple]
-                    else:
-                        curId = nodeid
-                        created_nodes[point_tuple] = curId
-                        nodeid -= 1
-
-                        node = ET.Element('node', visible='true', id=str(curId),
-                                         lat=str(point[1]), lon=str(point[0]))
-                        node.text = '\n    '
-                        node.tail = '\n  '
-                        osm.append(node)
-
-                    nd = ET.Element('nd', ref=str(curId))
-                    nd.tail = '\n    '
-                    way_node.append(nd)
-
-                add_tags_and_label(way_node, typecode, label, elementtagmap)
-                osm.append(way_node)
-
-    return nodeid
-
-
-def process_polygon(line_iterator, nodeid, elementtagmap):
-    global created_nodes
-    rnodes = {}
-    polygon_ways = []
-    label = None
-    typecode = None
+    has_data0 = False
 
     for line_number, line in enumerate(line_iterator, start=1):
         if line.startswith('[END]'):
@@ -802,6 +782,71 @@ def process_polygon(line_iterator, nodeid, elementtagmap):
             typecode = int(line.split('=')[1].strip(), 16)
 
         if line.startswith('Data0'):
+            has_data0 = True
+            coords = line.split('=')[1].strip().split(',')
+            way_node = ET.Element('way', id=str(nodeid), version='1')
+            nodeid -= 1
+
+            for i in range(0, len(coords), 2):
+                try:
+                    lat = float(coords[i][1:])
+                    lon = float(coords[i + 1][:-1])
+                except (IndexError, ValueError) as e:
+                    log_message("error_converting_coords", line_number, coords[i], coords[i + 1] if i + 1 < len(coords) else "Missing")
+                    continue
+
+                point_tuple = (lon, lat)
+
+                if point_tuple != current_point:
+                    if point_tuple in created_nodes:
+                        curId = created_nodes[point_tuple]
+                    else:
+                        curId = nodeid
+                        created_nodes[point_tuple] = curId
+                        nodeid -= 1
+
+                        node = ET.Element('node', id=str(curId), version='1',
+                                            lat=str(lat), lon=str(lon))
+                        node.text = '\n    '
+                        node.tail = '\n  '
+                        osm.append(node)
+
+                    nd = ET.Element('nd', ref=str(curId))
+                    nd.tail = '\n    '
+                    way_node.append(nd)
+                    current_point = point_tuple
+
+            add_tags_and_label(way_node, typecode, label, elementtagmap)
+            osm.append(way_node)
+            way_node.tail = '\n  '
+            current_point = None
+
+    if has_data0:
+        return nodeid
+    else:
+        return nodeid
+
+def process_polygon(line_iterator, nodeid, elementtagmap):
+    global created_nodes
+    rnodes = {}
+    polygon_ways = []
+    label = None
+    typecode = None
+
+    has_data0 = False
+
+    for line_number, line in enumerate(line_iterator, start=1):
+        if line.startswith('[END]'):
+            break
+
+        if line.startswith('Label'):
+            label = clean_label(line.split('=')[1])
+
+        if line.startswith('Type'):
+            typecode = int(line.split('=')[1].strip(), 16)
+
+        if line.startswith('Data0'):
+            has_data0 = True
             coords = line.split('=')[1].strip().split(',')
             poly_points = []
 
@@ -816,7 +861,6 @@ def process_polygon(line_iterator, nodeid, elementtagmap):
                     continue
 
             if poly_points:
-                # Ensuring the polygon is closed
                 if poly_points[0] != poly_points[-1]:
                     poly_points.append(poly_points[0])
 
@@ -835,7 +879,7 @@ def process_polygon(line_iterator, nodeid, elementtagmap):
                     return [], nodeid, label, typecode
 
                 for single_poly in poly_geom:
-                    way_node = ET.Element('way', visible='true', id=str(nodeid))
+                    way_node = ET.Element('way', id=str(nodeid), version='1')
                     nodeid -= 1
 
                     for point in single_poly.exterior.coords: 
@@ -848,7 +892,7 @@ def process_polygon(line_iterator, nodeid, elementtagmap):
                             created_nodes[point_tuple] = curId
                             nodeid -= 1
 
-                            node = ET.Element('node', visible='true', id=str(curId),
+                            node = ET.Element('node', id=str(curId), version='1',
                                               lat=str(point[1]), lon=str(point[0]))
                             node.text = '\n    '
                             node.tail = '\n  '
@@ -860,7 +904,11 @@ def process_polygon(line_iterator, nodeid, elementtagmap):
 
                     polygon_ways.append(way_node)
 
-    return polygon_ways, nodeid, label, typecode
+    if has_data0:
+        return polygon_ways, nodeid, label, typecode
+    else:
+        return [], nodeid, None, None
+
 def create_multipolygon_relation(ways, relation_id, relation_label, relation_typecode):
     relation = ET.Element('relation', id=str(relation_id), version='1')
     relation.text = '\n    '
@@ -880,11 +928,8 @@ def create_multipolygon_relation(ways, relation_id, relation_label, relation_typ
 
     return relation
 
-
-def convert_mp_to_osm(file_mp, file_osm, do_dissolve=True):
-    global osm, nodeid, created_nodes 
-    created_nodes = {} 
-
+def convert_mp_to_osm(file_mp, file_osm, do_dissolve=True, batch_size=1000):
+    global osm, nodeid, created_nodes
     if not os.path.isfile(file_mp):
         log_message("file_not_found", file_mp)
         return
@@ -894,7 +939,6 @@ def convert_mp_to_osm(file_mp, file_osm, do_dissolve=True):
     log_message("file_read_success")
 
     if do_dissolve and 'geometry' in gdf.columns and not gdf.empty:
-        # معالجة المضلعات فقط في عملية الدمج
         polygons_gdf = gdf[gdf['geometry'].type.isin(['Polygon', 'MultiPolygon'])]
 
         if not polygons_gdf.empty:
@@ -915,7 +959,11 @@ def convert_mp_to_osm(file_mp, file_osm, do_dissolve=True):
         else:
             log_message("no_polygons_to_dissolve")
 
-    osm = ET.Element('osm', version='0.6', generator='mp2osm')
+    with open(file_osm, 'w', encoding='utf-8') as osm_file:
+        osm_file.write('<?xml version=\'1.0\' encoding=\'UTF-8\'?>\n')
+        osm_file.write('<osm version="0.6" upload="false" generator="mp2osm">\n')
+
+    osm = ET.Element('osm', version='0.6', upload='false', generator='mp2osm')
     osm.text = '\n  '
     osm.tail = '\n'
     nodeid = -1
@@ -927,11 +975,15 @@ def convert_mp_to_osm(file_mp, file_osm, do_dissolve=True):
 
     with open(file_mp, encoding='windows-1256') as f:
         lines = iter(f.readlines())
+        batch_count = 0
+
         for line in lines:
             if line.startswith(('[POI]', '[RGN10]', '[RGN20]')):
                 nodeid -= 1
-                osm.append(process_node(lines, nodeid, POI_TAG_MAP))
-                poi_counter += 1
+                node = process_node(lines, nodeid, POI_TAG_MAP)
+                if node is not None:
+                    osm.append(node)
+                    poi_counter += 1
 
             elif line.startswith(('[POLYLINE]', '[RGN40]')):
                 nodeid -= 1
@@ -951,10 +1003,22 @@ def convert_mp_to_osm(file_mp, file_osm, do_dissolve=True):
                     for way in polygon_ways:
                         add_tags_and_label(way, typecode, label, POLYGON_TAG_MAP)
                         osm.append(way)
+                        way.tail = '\n  '
+            batch_count += 1
 
-    with open(file_osm, 'w', encoding='utf-8') as f:
-        f.write('<?xml version=\'1.0\' encoding=\'UTF-8\'?>\n')
-        f.write(ET.tostring(osm, encoding='utf-8').decode('utf-8'))
+            if batch_count >= batch_size:
+                with open(file_osm, 'a', encoding='utf-8') as osm_file:
+                    osm_file.write(ET.tostring(osm, encoding='utf-8').decode('utf-8')[len('<osm version="0.6" upload="false" generator="mp2osm">\n  '):-len('\n  </osm>')]) 
+                osm = ET.Element('osm', version='0.6', upload='false', generator='mp2osm')  
+                osm.text = '\n  '
+                osm.tail = '\n'
+                batch_count = 0
+    if batch_count > 0:
+        with open(file_osm, 'a', encoding='utf-8') as osm_file:
+            osm_file.write(ET.tostring(osm, encoding='utf-8').decode('utf-8')[len('<osm version="0.6" upload="false" generator="mp2osm">\n  '):-len('\n  </osm>')])
+
+    with open(file_osm, 'a', encoding='utf-8') as osm_file:
+        osm_file.write('\n</osm>')
 
     log_message("separator")
     log_message("conversion_totals_header")
@@ -994,6 +1058,8 @@ def compare_types(file_mp):
                     elif current_section == 'POLYGON':
                         types_in_file_polygon.add(typecode)
 
+    POI_TAG_MAP, POLYLINE_TAG_MAP, POLYGON_TAG_MAP = load_type_map('types.txt')
+
     defined_poi_types = set([code[0] for code in POI_TAG_MAP.keys()])
     missing_poi = types_in_file_poi - defined_poi_types
     log_message("separator")
@@ -1025,10 +1091,11 @@ def compare_types(file_mp):
     log_message("missing_polygon_types", ', '.join(hex(item) for item in missing_polygon))
 
 
-# فهرس نصوص التطبيق
 messages = {
     "ar": {
         "file_read_success": "تمت قراءة الملف بنجاح",
+        "types_file_not_found": "ملف الأنواع '{}' غير موجود.",
+        "types_file_generated": "تم إنشاء ملف الأنواع '{}' افتراضيًا.",
         "dissolve_success": "تمت عملية دمج المضلعات بنجاح",
         "merged_file_written": "تم كتابة الملف المدمج إلى \n'{}' للتحقق",
         "no_polygons_after_dissolve": "لم يتم العثور على مضلعات بعد عملية الدمج",
@@ -1043,23 +1110,23 @@ messages = {
                               "تحليل أنواع النقاط\n"
                               "========================",
         "num_poi_types_file": "عدد أنواع النقاط في \n'{}': {}",
-        "num_poi_types_defined": "عدد أنواع النقاط المعرفة في تطبيق التحويل: {}",
-        "num_missing_poi_types": "عدد أنواع النقاط الغير معرفة في تطبيق التحويل: {}",
-        "missing_poi_types": " بيان بأنواع النقاط الغير معرفة في تطبيق التحويل: {}",
+        "num_poi_types_defined": "عدد أنواع النقاط المعرفة في ملف التصنيفات: {}",
+        "num_missing_poi_types": "عدد أنواع النقاط الغير معرفة في ملف التصنيفات: {}",
+        "missing_poi_types": " بيان بأنواع النقاط الغير معرفة في ملف التصنيفات: {}",
         "polyline_types_analysis": "========================\n"
                                    "تحليل أنواع POLYLINE\n"
                                    "========================",
         "num_polyline_types_file": "عدد أنواع الخطوط في \n'{}': {}",
-        "num_polyline_types_defined": "عدد أنواع الخطوط المعرفة في تطبيق التحويل: {}",
-        "num_missing_polyline_types": "عدد أنواع الخطوط الغير معرفة في تطبيق التحويل: {}",
-        "missing_polyline_types": "بيان بأنواع الخطوط الغير معرفة في تطبيق التحويل: {}",
+        "num_polyline_types_defined": "عدد أنواع الخطوط المعرفة في ملف التصنيفات: {}",
+        "num_missing_polyline_types": "عدد أنواع الخطوط الغير معرفة في ملف التصنيفات: {}",
+        "missing_polyline_types": "بيان بأنواع الخطوط الغير معرفة في ملف التصنيفات: {}",
         "polygon_types_analysis": "========================\n"
                                   "تحليل أنواع POLYGON\n"
                                   "========================",
         "num_polygon_types_file": "عدد أنواع المضلعات في \n'{}': {}",
-        "num_polygon_types_defined": "عدد أنواع المضلعات المعرفة في تطبيق التحويل: {}",
-        "num_missing_polygon_types": "عدد أنواع المضلعات الغير معرفة في تطبيق التحويل: {}",
-        "missing_polygon_types": "بيان بأنواع المضلعات الغير معرفة في تطبيق التحويل: {}",
+        "num_polygon_types_defined": "عدد أنواع المضلعات المعرفة في ملف التصنيفات: {}",
+        "num_missing_polygon_types": "عدد أنواع المضلعات الغير معرفة في ملف التصنيفات: {}",
+        "missing_polygon_types": "بيان بأنواع المضلعات الغير معرفة في ملف التصنيفات: {}",
         "error_reading_coords": "خطأ في قراءة الإحداثيات: {}",
         "error_converting_coords": "خطأ في تحويل الإحداثيات إلى أرقام: {}, {}",
         "raw_coordinates": "الإحداثيات الخام عند السطر {}: {}",
@@ -1068,6 +1135,8 @@ messages = {
     },
     "en": {
         "file_read_success": "File read successfully",
+        "types_file_not_found": "Types file '{}' not found.",
+        "types_file_generated": "Default types file '{}' generated.",
         "dissolve_success": "Dissolve operation performed successfully",
         "merged_file_written": "The merged file was written to '{}' for verification",
         "no_polygons_after_dissolve": "No polygons found after dissolve operation",
@@ -1122,7 +1191,19 @@ def log_message(message_key, *args):
     text_area.config(state=tk.DISABLED)
     text_area.see(tk.END)
 
-# إعداد النصوص للغتين
+
+
+def load_and_check_types():
+    global POI_TAG_MAP, POLYLINE_TAG_MAP, POLYGON_TAG_MAP
+    types_file = 'types.txt'
+
+    if not os.path.isfile(types_file):
+        log_message("types_file_not_found", types_file)
+        generate_default_type_map(types_file)
+        log_message("types_file_generated", types_file)
+
+    POI_TAG_MAP, POLYLINE_TAG_MAP, POLYGON_TAG_MAP = load_type_map(types_file)
+
 texts = {
     "ar": {
         "input_file_label": "ملف MP المدخل:",
@@ -1148,14 +1229,13 @@ texts = {
     }
 }
 
-current_language = "ar"  # اللغة الافتراضية
+current_language = "ar"
 
 
 def update_language(lang):
     global current_language
     current_language = lang
 
-    # إعادة تشكيل النصوص للعرض الصحيح
     reshaped_input = arabic_reshaper.reshape(texts[lang]["input_file_label"])
     reshaped_output = arabic_reshaper.reshape(texts[lang]["output_file_label"])
     reshaped_dissolve = arabic_reshaper.reshape(texts[lang]["dissolve_option"])
@@ -1163,7 +1243,6 @@ def update_language(lang):
     reshaped_browse = arabic_reshaper.reshape(texts[lang]["browse_button"])
     reshaped_language = arabic_reshaper.reshape(texts[lang]["language_button"])
 
-    # تحديث النصوص في الواجهة
     input_file_label.config(text=get_display(reshaped_input), anchor="e" if lang == "ar" else "w")
     output_file_label.config(text=get_display(reshaped_output), anchor="e" if lang == "ar" else "w")
     browse_input_button.config(text=get_display(reshaped_browse))
@@ -1173,7 +1252,6 @@ def update_language(lang):
     language_button.config(text=get_display(reshaped_language))
 
     if lang == "ar":
-        # محاذاة من اليمين لليسار
         input_file_label.grid(row=0, column=2, padx=10, pady=5, sticky=tk.E)
         input_entry.grid(row=0, column=1, padx=10, pady=5)
         browse_input_button.grid(row=0, column=0, padx=10, pady=5)
@@ -1186,7 +1264,6 @@ def update_language(lang):
         start_button.grid(row=3, column=1, padx=10, pady=10)
         language_button.grid(row=3, column=0, padx=10, pady=10, columnspan=3, sticky=tk.W)
     else:
-        # محاذاة من اليسار لليمين
         input_file_label.grid(row=0, column=0, padx=10, pady=5, sticky=tk.W)
         input_entry.grid(row=0, column=1, padx=10, pady=5)
         browse_input_button.grid(row=0, column=2, padx=10, pady=5)
@@ -1200,7 +1277,6 @@ def update_language(lang):
         language_button.grid(row=3, column=2, padx=10, pady=10, columnspan=3, sticky=tk.E)
 
 
-# في إعداد الواجهة (بداية تعريف عناصر واجهة المستخدم)
 app = tk.Tk()
 app.title("MP Converter محول ام بي")
 
@@ -1244,5 +1320,7 @@ text_area = scrolledtext.ScrolledText(app, state=tk.DISABLED, width=60, height=1
 text_area.grid(row=5, column=0, columnspan=3, padx=10, pady=10)
 text_area.tag_configure("rtl", justify=tk.RIGHT)
 update_language(current_language)
+
+load_and_check_types() 
 
 app.mainloop()
