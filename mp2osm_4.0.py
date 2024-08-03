@@ -237,7 +237,7 @@ def generate_default_type_map(file_path):
 (0x4302,):xxx=xxx
 (0x4400,):amenity=fuel
 (0x4500,):amenity=restaurant
-(0x4600,):amenity=pub
+(0x4600,):xxx=xxx
 (0x4700,):leisure=slipway
 (0x4800,):tourism=campsite
 (0x4900,):leisure=park
